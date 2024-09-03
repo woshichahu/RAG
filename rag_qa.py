@@ -1,20 +1,21 @@
-from langchain_community.vectorstores import Chroma
 import os
-from langchain_community.document_loaders import TextLoader
-from langchain_text_splitters import CharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
 from rich import print
-from langchain_community.llms import ChatGLM
-from langchain.chains import RetrievalQA
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
-# 加载文档
+from langchain.chains import RetrievalQA
+from langchain_community.llms import ChatGLM
+from langchain_community.vectorstores import Chroma
+from langchain_text_splitters import CharacterTextSplitter
+from langchain_community.document_loaders import TextLoader
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
-
+# 加载环境变量，我把API密钥放到.env文件中了
 load_dotenv()
+
+# 加载文档
 def load_document(document_path="./b.txt"):
     loader = TextLoader(document_path,encoding='utf-8')
-    #    loader = DirectoryLoader(document_path)
+
     print('loader',loader)
     documents = loader.load()
     print('documents',documents)
@@ -26,7 +27,7 @@ def load_document(document_path="./b.txt"):
 
     return spliter_docs
 
-
+# 加载向量模型
 def load_embedding_mode():
     encode_kwargs = {"normalize_embeddings": False}
     model_kwargs = {"device": "cpu"}
@@ -39,7 +40,7 @@ def load_embedding_mode():
         encode_kwargs=encode_kwargs
     )
 
-
+# 构建向量数据库
 def store_chroma(docs, embeddings, persist_directory="VectorStore"):
     # 创建数据库
     db = Chroma.from_documents(docs, embeddings, persist_directory=persist_directory)
@@ -47,7 +48,7 @@ def store_chroma(docs, embeddings, persist_directory="VectorStore"):
     print("数据库创建完成~")
     return db
 
-
+# 调用API接口，引入大模型的推理能力和信息整合能力
 model = ChatOpenAI(
     model = 'glm-4',
     openai_api_base = "https://open.bigmodel.cn/api/paas/v4/",
@@ -63,12 +64,7 @@ if not os.path.exists('VectorStore'):
 else:
     db = Chroma(persist_directory="VectorStore", embedding_function=embeddings)
 
-# 加载模型 ChatGLM
-# llm = ChatGLM(
-#     endpoint='http://127.0.0.1:8000',
-#     max_token=80000,
-#     top_p=0.9
-# )
+
 
 retriever = db.as_retriever()
 qa = RetrievalQA.from_chain_type(
@@ -77,6 +73,6 @@ qa = RetrievalQA.from_chain_type(
     retriever=retriever
 )
 # 提问文档相关的问题
-# The function `run` was deprecated in LangChain 0.1.0 and will be removed in 0.2.0. Use invoke instead.
+
 response = qa.invoke('文章中的故事发生在那个皇帝在位期间？公元多少年？')
 print(response)
